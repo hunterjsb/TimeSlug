@@ -49,20 +49,26 @@ scores.json will be structured as follows:
     ...   
 }
 """
-
-today_dt = datetime.datetime.today().date()
-today = today_dt.strftime('%m-%d-%Y')
-
+# images for the embedded message
 PFP_URLS = {
     'ironclad': 'https://racketrenegade.com/wp-content/uploads/2020/06/1521914530_slay-the-spire-1.jpg',
     'silent': 'https://res.cloudinary.com/lmn/image/upload/e_sharpen:100/f_auto,fl_lossy,q_auto/v1/gameskinnyc/s/i/l/'
               'silentportrait-6a431.jpg',
     'defect': 'https://cdn.pastemagazine.com/www/articles/slay%20the%20spire%20defect%20main.jpg',
-    'vigilant': 'https://www.dexerto.com/wp-content/uploads/2019/11/akali-cosplay.jpg'
+    'watcher': 'https://www.dexerto.com/wp-content/uploads/2019/11/akali-cosplay.jpg'
 }
 
 
-def update_score(date: str, player_id: int, player_score: int, *args):
+# returns today's date as a string in the format used as the top-level key in scores.json
+def update_date(fmt='%m-%d-%Y'):
+    today_dt = datetime.datetime.today().date()
+    return today_dt.strftime(fmt)
+
+
+# open the file, update a player's scores, and add a new leaderboard if necessary
+# can also update character and modifiers
+# returns dict of all score data
+def update_score(date: str, player_id: int, player_score: int, *args) -> dict:
     player_id = str(player_id)  # str for keys in json
 
     with open('scores.json', 'r') as f:
@@ -86,24 +92,28 @@ def update_score(date: str, player_id: int, player_score: int, *args):
         }
 
     # update character and modifiers if applicable
-    if len(args):
+    if len(args):  # first arg is character
         all_scores[date]['character'] = args[0].lower()
-    if len(args) > 1:
+    if len(args) > 1:  # second is a list of modifiers as a string
         all_scores[date]['modifiers'] = args[1].lower().split(' ')
 
     with open('scores.json', 'w') as f:
         json.dump(all_scores, f, indent=4)
 
+    return all_scores
 
-# add score to daily run
+
+# add score to daily run, print current winner
 @bot.command()
 async def score(ctx, player_score, *args):
-    update_score(today, ctx.author.id, player_score, *args)
-    await ctx.send('Updated leaderboard.')
+    player_score = int(player_score)
+    scores = update_score(update_date(), ctx.author.id, player_score, *args)
+    winner = await bot.fetch_user(int(scores[update_date()]['winner']))
+    await ctx.send(f'Updated leaderboard.\nCurrent leader: `{winner.name}`')
 
 
 @bot.command()
-async def leaderboard(ctx, day=today):
+async def leaderboard(ctx, day=update_date()):
     with open('scores.json', 'r') as f:
         try:
             scoreboard = json.load(f)[day]
