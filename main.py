@@ -59,7 +59,7 @@ PFP_URLS = {
 }
 
 
-# returns today's date as a string in the format used as the top-level key in scores.json
+# returns today's date as a string in the format used as the top-level keys in scores.json
 def update_date(fmt='%m-%d-%Y'):
     today_dt = datetime.datetime.today().date()
     return today_dt.strftime(fmt)
@@ -77,14 +77,15 @@ def update_score(date: str, player_id: int, player_score: int, *args) -> dict:
     # try to update existing player entry and update winner
     if date in all_scores.keys():
         all_scores[date]['scores'].update({player_id: player_score})
-        all_scores[date]['winner'] = \
-            sorted(all_scores[date]['scores'], key=all_scores[date]['scores'].get, reverse=True)[0]
+        all_scores[date]['winner'] = sorted(all_scores[date]['scores'],
+                                            key=all_scores[date]['scores'].get,
+                                            reverse=True)[0]
 
     # else construct a new leaderboard
     else:
         all_scores[date] = {
             'character': 'unknown',
-            'modifiers': 'unknown',
+            'modifiers': ['unknown'],
             'winner': player_id,
             'scores': {
                 player_id: player_score
@@ -108,12 +109,15 @@ def update_score(date: str, player_id: int, player_score: int, *args) -> dict:
 async def score(ctx, player_score, *args):
     player_score = int(player_score)
     scores = update_score(update_date(), ctx.author.id, player_score, *args)
-    winner = await bot.fetch_user(int(scores[update_date()]['winner']))
-    await ctx.send(f'Updated leaderboard.\nCurrent leader: `{winner.name}`')
+    current_winner = await bot.fetch_user(int(scores[update_date()]['winner']))
+    await ctx.send(f'Updated leaderboard.\nCurrent leader: `{current_winner.name}`')
 
 
 @bot.command()
-async def leaderboard(ctx, day=update_date()):
+async def leaderboard(ctx, day='today'):
+    if day == 'today':
+        day = update_date()
+
     with open('scores.json', 'r') as f:
         try:
             scoreboard = json.load(f)[day]
@@ -123,6 +127,7 @@ async def leaderboard(ctx, day=update_date()):
 
     # sort the player id's according to score
     scores = sorted(scoreboard['scores'], key=scoreboard['scores'].get, reverse=True)
+    winner = await bot.fetch_user(int(scores[0]))
 
     # create and embedded leaderboard
     pasta = discord.Embed(
@@ -130,12 +135,42 @@ async def leaderboard(ctx, day=update_date()):
         description=f'*{" ".join(scoreboard["modifiers"])} __{scoreboard["character"]}__*',
         color=discord.Color.blurple()
     )
+
+    # add the user to embed
     for i, player_id in enumerate(scores):
         user = await bot.fetch_user(int(player_id))
-        pasta.add_field(name=f'{i+1}. {user.name.upper()}:', value=scoreboard['scores'][player_id], inline=False)
+        pasta.add_field(name=f'{i+1}. {user.name}:', value=f'`{scoreboard["scores"][player_id]}`', inline=False)
+    # add the character image
     if scoreboard["character"] in PFP_URLS:
-        pasta.set_thumbnail(url=PFP_URLS[scoreboard['character']])
+        pasta.set_image(url=PFP_URLS[scoreboard['character']])
+    # add winner thumbnail
+    pasta.set_thumbnail(url=winner.avatar_url)
 
+    # send the message
+    await ctx.send(embed=pasta)
+
+
+@bot.command()
+async def stats(ctx):
+    with open('scores.json', 'r') as f:
+        scores = json.load(f)
+    # init some vars :p
+    pid = str(ctx.author.id)
+    pts, n, wins = 0, 0, 0
+    # tally up the stats
+    for day in scores:
+        if pid in scores[day]['scores']:
+            n += 1
+            pts += scores[day]['scores'][pid]
+        if scores[day]['winner'] == pid:
+            wins += 1
+    # make the embed
+    pasta = discord.Embed(title=f'Stats for __{ctx.author.name}__', description=f'*as of {update_date()}*')
+    pasta.set_thumbnail(url=ctx.author.avatar_url)
+    pasta.add_field(name='Challenges Done', value=f'`{n}`', inline=False)
+    pasta.add_field(name='Total Points', value=f'`{pts}`', inline=False)
+    pasta.add_field(name='Average Points', value=f'`{round(pts/n)}`', inline=False)
+    pasta.add_field(name='Total Wins', value=f'`{wins}`', inline=False)
     # send the message
     await ctx.send(embed=pasta)
 
