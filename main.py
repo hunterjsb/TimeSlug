@@ -5,7 +5,8 @@ from discord.ext import commands
 import random
 import string
 
-TOKEN = 'ODg1MjI5NTE2NzYxNDczMDk1.YTkAOw.qKsrtN9LEYj_O6nkEHRKXIsY6M4'
+with open('secrets.json', 'r') as secrets_file:
+    TOKEN = json.load(secrets_file)['DISCORD_TOKEN']
 bot = commands.Bot(command_prefix='$')
 
 
@@ -14,9 +15,8 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name=f'$score, $leaderboard, or try $help...'))
     print('- R E A D Y -')
 
+
 # ------------- LITE-SHOT BOT ---------------
-
-
 # generate random alpha-numeric lite-shot URL extension and append it
 def generate_url(length: int) -> str:
     an_str = ''.join(random.choices(string.ascii_letters + string.digits, k=length)).lower()
@@ -30,7 +30,6 @@ async def prntsc(ctx, n=1, length=6):
     for i in range(n):
         url = generate_url(length)
         await ctx.send(url)
-
 
 #  ------------- SLAY THE SPIRE ----------------
 #  oct. 25, 2021
@@ -117,7 +116,6 @@ async def score(ctx, player_score, *args):
 async def leaderboard(ctx, day='today'):
     if day == 'today':
         day = update_date()
-
     with open('scores.json', 'r') as f:
         try:
             scoreboard = json.load(f)[day]
@@ -125,18 +123,19 @@ async def leaderboard(ctx, day='today'):
             await ctx.send('No scoreboard for today!')
             return
 
+    # SORTING
     # sort the player id's according to score
     scores = sorted(scoreboard['scores'], key=scoreboard['scores'].get, reverse=True)
     winner = await bot.fetch_user(int(scores[0]))
 
+    # EMBED CONSTRUCTION
     # create and embedded leaderboard
     pasta = discord.Embed(
         title=f'Daily Challenge, {day}',
         description=f'*{" ".join(scoreboard["modifiers"])} __{scoreboard["character"]}__*',
         color=discord.Color.blurple()
     )
-
-    # add the user to embed
+    # add the users to embed
     for i, player_id in enumerate(scores):
         user = await bot.fetch_user(int(player_id))
         pasta.add_field(name=f'{i+1}. {user.name}:', value=f'`{scoreboard["scores"][player_id]}`', inline=False)
@@ -145,7 +144,6 @@ async def leaderboard(ctx, day='today'):
         pasta.set_image(url=PFP_URLS[scoreboard['character']])
     # add winner thumbnail
     pasta.set_thumbnail(url=winner.avatar_url)
-
     # send the message
     await ctx.send(embed=pasta)
 
@@ -154,9 +152,10 @@ async def leaderboard(ctx, day='today'):
 async def stats(ctx):
     with open('scores.json', 'r') as f:
         scores = json.load(f)
-    # init some vars :p
     pid = str(ctx.author.id)
     pts, n, wins = 0, 0, 0
+
+    # STAT COLLECTION
     # tally up the stats
     for day in scores:
         if pid in scores[day]['scores']:
@@ -164,6 +163,8 @@ async def stats(ctx):
             pts += scores[day]['scores'][pid]
         if scores[day]['winner'] == pid:
             wins += 1
+
+    # EMBED CONSTRUCTION
     # make the embed
     pasta = discord.Embed(title=f'Stats for __{ctx.author.name}__', description=f'*as of {update_date()}*')
     pasta.set_thumbnail(url=ctx.author.avatar_url)
