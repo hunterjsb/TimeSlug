@@ -129,7 +129,7 @@ async def leaderboard(ctx, day='today'):
     winner = await bot.fetch_user(int(scores[0]))
 
     # EMBED CONSTRUCTION
-    # create and embedded leaderboard
+    # create and embed leaderboard
     pasta = discord.Embed(
         title=f'Daily Challenge, {day}',
         description=f'*{" ".join(scoreboard["modifiers"])} __{scoreboard["character"]}__*',
@@ -154,6 +154,7 @@ async def stats(ctx):
         scores = json.load(f)
     pid = str(ctx.author.id)
     pts, n, wins = 0, 0, 0
+    days = len(scores)
 
     # STAT COLLECTION
     # tally up the stats
@@ -170,7 +171,8 @@ async def stats(ctx):
     pasta.set_thumbnail(url=ctx.author.avatar_url)
     pasta.add_field(name='Challenges Done', value=f'`{n}`', inline=False)
     pasta.add_field(name='Total Points', value=f'`{pts}`', inline=False)
-    pasta.add_field(name='Average Points', value=f'`{round(pts/n)}`', inline=False)
+    pasta.add_field(name='Average Points    |', value=f'`{round(pts/n)}`')
+    pasta.add_field(name='Jukkscore (pts per day)', value=f'`{round(pts / days)}`')
     pasta.add_field(name='Total Wins', value=f'`{wins}`', inline=False)
     # send the message
     await ctx.send(embed=pasta)
