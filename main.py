@@ -60,8 +60,12 @@ PFP_URLS = {
 
 # returns today's date as a string in the format used as the top-level keys in scores.json
 def update_date(fmt='%m-%d-%Y'):
-    today_dt = datetime.datetime.today().date()
-    return today_dt.strftime(fmt)
+    today_dt = datetime.datetime.today()
+    if today_dt.hour < 20:
+        challenge_day = today_dt.date()
+    else:
+        challenge_day = today_dt.date() + datetime.timedelta(days=1)
+    return challenge_day.strftime(fmt)
 
 
 # open the file, update a player's scores, and add a new leaderboard if necessary

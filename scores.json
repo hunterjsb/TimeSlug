@@ -134,9 +134,9 @@
     "11-03-2021": {
         "character": "defect",
         "modifiers": [
-            "random",
-            "night",
-            "terror"
+            "insanity",
+            "red-deck",
+            "night-terror"
         ],
         "winner": "408704037358272535",
         "scores": {
